@@ -1,151 +1,168 @@
 import streamlit as st
+import numpy as np
 import pandas as pd
-import math
-from pathlib import Path
+import plotly.express as px
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# --- Page config ---
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title="🌟 My Worth, My Wellness, My World",
+    layout="wide",
+    page_icon="🌈"
 )
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# --- App title ---
+st.title("🌟 My Worth, My Wellness, My World")
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+st.markdown("""
+Welcome to your personal transformation journey! 🚀  
+Take this fun, interactive self-assessment to discover insights about your well-being.  
+Let's build a world of wellness, together! 💫
+""")
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+# --- Sidebar progress ---
+st.sidebar.title("📊 Progress")
+progress = st.sidebar.empty()
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# --- Define sections ---
+sections = {
+    "💪 Body": [
+        "How would you rate your current physical health (1-10)?",
+        "How many hours of sleep do you get each night?",
+        "How often do you exercise weekly?",
+        "Rate your energy levels throughout the day (1-10)?",
+    ],
+    "🧠 Mindset": [
+        "How optimistic are you overall (1-10)?",
+        "How often do you experience negative self-talk (1-10)?",
+        "Rate your confidence in achieving goals (1-10)?",
+        "How easily do you adapt to change (1-10)?",
+    ],
+    "💓 Emotions": [
+        "How well do you manage emotions (1-10)?",
+        "How often do you feel stressed (1-10)?",
+        "Rate your comfort expressing emotions (1-10)?",
+        "How often do you practice self-compassion (1-10)?",
+    ],
+    "😄 Joy": [
+        "How often do you feel joy (1-10)?",
+        "How connected are you to your passions (1-10)?",
+        "How often do you express gratitude (1-10)?",
+        "Rate your overall contentment (1-10)?",
+    ],
+    "🤝 Relationships": [
+        "How would you rate your relationships overall (1-10)?",
+        "How supported do you feel by loved ones (1-10)?",
+        "How well do you communicate your needs (1-10)?",
+        "Rate your comfort in asking for help (1-10)?",
+    ],
+    "💰 Wealth": [
+        "How satisfied are you with your financial situation (1-10)?",
+        "Do you have clear financial goals (1-10)?",
+        "Rate how well you manage finances (1-10)?",
+        "How secure do you feel financially (1-10)?",
+    ],
+    "🎯 Purpose": [
+        "How clear are you about your life's purpose (1-10)?",
+        "How meaningful is your daily life (1-10)?",
+        "How strong is your sense of fulfillment (1-10)?",
+        "How inspired do you feel day-to-day (1-10)?",
+    ],
+    "🌍 Contribution": [
+        "How often do you help or volunteer (1-10)?",
+        "How much impact do you feel you make (1-10)?",
+        "How connected are you to your community (1-10)?",
+        "How satisfied are you with your contribution (1-10)?",
+    ]
+}
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+# --- Storage for scores ---
+responses = {}
+section_scores = {}
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
+total_sections = len(sections)
+counter = 0
+
+# --- Collect data per section ---
+for section, qs in sections.items():
+    with st.expander(f"{section}"):
+        st.markdown(f"### {section}")
+        section_total = 0
+        for q in qs:
+            val = st.slider(q, 1, 10, 5)
+            section_total += val
+        avg = section_total / len(qs)
+        section_scores[section] = avg
+        counter += 1
+        progress.progress(counter/total_sections)
+
+# --- Display results button ---
+if st.button("🚀 GO! Show My Results"):
+    st.balloons()
+    st.success("🎉 Assessment Completed! Here’s your personalized summary:")
+
+    # --- Dataframe for radar chart ---
+    categories = list(section_scores.keys())
+    values = list(section_scores.values())
+
+    df = pd.DataFrame(dict(
+        section=categories,
+        score=values
+    ))
+
+    # --- Radar chart using Plotly ---
+    fig = px.line_polar(
+        df,
+        r='score',
+        theta='section',
+        line_close=True,
+        range_r=[0,10],
+        markers=True,
+        template='plotly_dark',
+        color_discrete_sequence=['#FF69B4']
     )
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
+    # --- Display summary cards ---
+    st.markdown("### 💡 **Your Well-Being Overview**")
+    cols = st.columns(4)
+    i = 0
+    for sec, score in section_scores.items():
+        if score < 5:
+            color = "❌"
+            msg = "Needs focus and care."
+        elif score < 7:
+            color = "⚠️"
+            msg = "Doing okay, room for growth!"
         else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+            color = "✅"
+            msg = "Great job! You're thriving."
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+        with cols[i % 4]:
+            st.metric(
+                label=f"{color} {sec}",
+                value=f"{score:.1f} / 10",
+                delta=msg
+            )
+        i += 1
+
+    # --- Overall score ---
+    overall = sum(section_scores.values()) / len(section_scores)
+    st.markdown(f"""
+        <div style='background-color: #4CAF50; padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+            <h2>🌟 Your Overall Well-Being Score: {overall:.2f} / 10</h2>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # --- Recommendations ---
+    st.header("📌 Personalized Recommendations")
+
+    for sec, score in section_scores.items():
+        if score < 5:
+            st.warning(f"**{sec}** → Consider focusing on this area. Explore support, learning, or coaching.")
+        elif score < 7:
+            st.info(f"**{sec}** → Good foundation! Keep building strength and exploring new ways to grow.")
+        else:
+            st.success(f"**{sec}** → Excellent! You’re thriving here. Keep shining! ✨")
+
+else:
+    st.info("⬆️ Complete the sliders above, then click **GO!** to see your personalized results.")
